@@ -394,7 +394,7 @@ class _IOFile(str, AnnotatedStringInterface):
 
     @property
     def should_keep_local(self):
-        return self.storage_object.keep_local
+        return self.is_storage and self.storage_object.keep_local
 
     @property
     def should_not_be_retrieved_from_storage(self):
@@ -705,7 +705,11 @@ class _IOFile(str, AnnotatedStringInterface):
         lchmod(self.file, mode)
 
     async def remove(self, remove_non_empty_dir=False, only_local=False):
-        if self.is_directory:
+        if self.should_keep_local and only_local:
+            logger.info(
+                f"Skipped removing {self} from local storage because it is set to be kept locally."
+            )
+        elif self.is_directory:
             await remove(self, remove_non_empty_dir=True, only_local=only_local)
         else:
             await remove(

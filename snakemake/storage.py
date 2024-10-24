@@ -11,6 +11,7 @@ from snakemake_interface_storage_plugins.storage_object import (
 )
 from snakemake.io import MaybeAnnotated
 from snakemake.common import __version__
+from snakemake.logging import logger
 
 
 def flag_with_storage_object(path: MaybeAnnotated, storage_object):
@@ -54,6 +55,7 @@ class StorageRegistry:
         provider: Optional[str] = None,
         tag: Optional[str] = None,
         is_default: bool = False,
+        keep_local: Optional[bool] = None,
         **settings,
     ):
         if provider is None:
@@ -80,6 +82,11 @@ class StorageRegistry:
 
         name = tag if tag else plugin.name
 
+        if name in self._storages.keys():
+            logger.warning(
+                f"Attempting to register multiple storage providers with the same name: {name}, will clobber previous provider."
+            )
+
         local_prefix = self.workflow.storage_settings.local_storage_prefix / name
 
         if is_default and not (
@@ -95,10 +102,16 @@ class StorageRegistry:
                 f"{plugin.name} is not."
             )
 
+        keep_local = (
+            self.workflow.storage_settings.keep_storage_local
+            if keep_local is None
+            else keep_local
+        )
+
         provider_instance = plugin.storage_provider(
             local_prefix=local_prefix,
             settings=final_settings,
-            keep_local=self.workflow.storage_settings.keep_storage_local,
+            keep_local=keep_local,
             is_default=is_default,
         )
         self._storages[name] = provider_instance
@@ -137,7 +150,7 @@ class StorageRegistry:
         self,
         query: str,
         retrieve: bool = True,
-        keep_local: bool = False,
+        keep_local: bool = None,
     ):
         return self._storage_object(
             query, provider=None, retrieve=retrieve, keep_local=keep_local
@@ -148,7 +161,7 @@ class StorageRegistry:
         query: Union[str, List[str]],
         provider: Optional[str] = None,
         retrieve: bool = True,
-        keep_local: bool = False,
+        keep_local: bool = None,
     ):
         if isinstance(query, list):
             return [
@@ -175,6 +188,9 @@ class StorageRegistry:
                 f"storage/{provider}.html). {query_validity}"
             )
 
+        # Use provider's `keep_local` setting if not explicitly set on object
+        keep_local = provider.keep_local if keep_local is None else keep_local
+
         storage_object = provider.object(
             query, retrieve=retrieve, keep_local=keep_local
         )
@@ -191,8 +207,11 @@ class StorageProviderProxy:
         self,
         query: str,
         retrieve: bool = True,
-        keep_local: bool = False,
+        keep_local: bool = None,
     ):
         return self.registry._storage_object(
-            query, provider=self.name, retrieve=retrieve, keep_local=keep_local
+            query,
+            provider=self.name,
+            retrieve=retrieve,
+            keep_local=keep_local,
         )
