@@ -114,6 +114,15 @@ class StorageRegistry:
             keep_local=keep_local,
             is_default=is_default,
         )
+
+        if is_default:
+            if self.workflow.storage_settings.default_storage_provider:
+                logger.warning(
+                    f"Attempting to register multiple default storage providers with the name: {name}, will clobber previous default provider."
+                )
+            self.workflow.storage_settings.default_storage_provider = name
+            self._default_storage_provider = provider_instance
+
         self._storages[name] = provider_instance
         return provider_instance
 
