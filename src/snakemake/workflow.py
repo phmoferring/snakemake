@@ -378,17 +378,24 @@ class Workflow(WorkflowExecutorInterface):
                     )
                     continue
 
-                # The kubernetes API can't create secret files larger than 1MB.
-                source_file_size = os.path.getsize(f)
-                max_file_size = 10000000
-                if source_file_size > max_file_size:
-                    logger.warning(
-                        "Skipping the source file for upload {f}. Its size "
-                        "{source_file_size} exceeds "
-                        "the maximum file size (10MB). Consider to provide the file as "
-                        "input file instead.".format(
-                            f=f, source_file_size=source_file_size
+                if os.path.exists(f):
+                    # The kubernetes API can't create secret files larger than 1MB.
+                    source_file_size = os.path.getsize(f)
+                    max_file_size = 10000000
+                    if source_file_size > max_file_size:
+                        logger.warning(
+                            "Skipping the source file for upload {f}. Its size "
+                            "{source_file_size} exceeds "
+                            "the maximum file size (10MB). Consider to provide the file as "
+                            "input file instead.".format(
+                                f=f, source_file_size=source_file_size
+                            )
                         )
+                        continue
+                else:
+                    logger.warning(
+                        f"Skipping the source file for upload {f}. "
+                        f"Source file does not exist."
                     )
                     continue
                 yield f
